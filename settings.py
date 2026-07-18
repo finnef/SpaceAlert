@@ -1,3 +1,8 @@
+import os
+
+_baseDir = os.path.dirname(os.path.realpath(__file__))
+
+
 class Settings:
     """
     Class that contains all the variables to the mp3's and messages. Allows for easy swtchint between language's and fixing of typo's
@@ -6,7 +11,7 @@ class Settings:
     def __init__(self):
         pass
 
-    soundsDir = 'sounds/'
+    soundsDir = os.path.join(_baseDir, 'sounds') + os.sep
 
     sound = {}
     messg = {}

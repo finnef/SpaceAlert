@@ -4,12 +4,11 @@
 # dependencies = ["pygame"]
 # ///
 
-import os
-import sys
 import time
 from collections import deque
 from threading import Thread
 from ducklingScriptParser import ducklingScriptParser
+from keypress import KeyReader
 import threads
 
 def main():
@@ -34,6 +33,20 @@ def main():
         runGame(script)
         return True
 
+def waitOrAbort(keys, until):
+    """Wait until `until`, returning True if 'q' was pressed in the meantime.
+
+    @param keys:
+    @param until:
+    @return:
+    """
+    while time.time() < until:
+        if keys.key() == 'q':
+            return True
+        # go easy on the CPU:
+        time.sleep(.1)
+    return False
+
 def runGame(script):
 
     # Initilaize the audio, display, and communiquation queu:
@@ -51,19 +64,6 @@ def runGame(script):
     # Start the game NOW:
     startTime = time.time()
 
-    import select
-    try:
-        import tty
-        import termios
-        fd = sys.stdin.fileno()
-        isatty = os.isatty(fd)
-    except:
-        isatty = False
-
-    if isatty:
-        old_settings = termios.tcgetattr(fd)
-        tty.setcbreak(fd)
-
     # Spawn the audio thread:
     audioThread = Thread(target=threads.AudioThread, args=(audioQ,threadCommunicationQ), daemon=True)
 
@@ -71,26 +71,15 @@ def runGame(script):
     displayThread = Thread(target=threads.DisplayThread, args=(displayQ, startTime,threadCommunicationQ), daemon=True)
 
     aborted = False
-    try:
+    with KeyReader() as keys:
         audioThread.start()
         displayThread.start()
 
         for timeEvent, event in eventList:
-            # Set the timer for the next event.
-            timer = startTime + timeEvent
-
-            # Wait for next event.
-            while time.time() < timer:
-                # Check for abort
-                if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-                    if sys.stdin.read(1).lower() == 'q':
-                        threadCommunicationQ.append('ABORT')
-                        aborted = True
-                        break
-                # go easy on the CPU:
-                time.sleep(.1)
-
-            if aborted:
+            # Wait for the next event, unless the cadet bails out first.
+            if waitOrAbort(keys, startTime + timeEvent):
+                threadCommunicationQ.append('ABORT')
+                aborted = True
                 break
 
             # Add the que's to the event and run the event
@@ -100,16 +89,8 @@ def runGame(script):
         if not aborted:
             #Give the mp3s 20 seconds to finish playing
             # Also allow aborting during this wait
-            end_wait = time.time() + 20
-            while time.time() < end_wait:
-                if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-                    if sys.stdin.read(1).lower() == 'q':
-                        threadCommunicationQ.append('ABORT')
-                        break
-                time.sleep(.1)
-    finally:
-        if isatty:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            if waitOrAbort(keys, time.time() + 20):
+                threadCommunicationQ.append('ABORT')
 
     #Signal the Thread to end, and wait for it.
     threadCommunicationQ.append('AUDIO-STOP')

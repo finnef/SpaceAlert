@@ -1,7 +1,11 @@
+import os
+
 try:
     import configparser as ConfigParser
 except ImportError:
     import ConfigParser
+
+_missionsDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'missions')
 
 
 class missionList():
@@ -18,7 +22,7 @@ class missionList():
         missionConfigs = ['duckling.cfg', 'LittleDuckling.cfg']
 
         for configFile in missionConfigs:
-            self.parseConfigFile('missions/'+configFile)
+            self.parseConfigFile(os.path.join(_missionsDir, configFile))
 
         #TODO: CHECK IF ALL MISSIONS ARE PLAYBLE.
 

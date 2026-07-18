@@ -1,6 +1,6 @@
 #Little Duckling Player
 This is an interpreter for scripted missions of the board game Space Alert
-(Vlaada Chvatil). Made to work with the missions in the little duckling
+(Vlaada Chvatil). Made to work with the missions in the base game and the little duckling
 expansion.
 
 Rule book, missions, sounds available at:
@@ -11,9 +11,13 @@ Rule book, missions, sounds available at:
 
 ##Installation
 
+- Download the code. Store this folder in a convenient location.
 - Install uv (https://docs.astral.sh/uv/getting-started/installation/)
-- execute the script: ./SpaceAlertPlayer.py
-uv takes care of the dependencies.
+- Optional (MacOS/Linux): symlink the script SpaceAlertPlayer.py to ~/.local/bin/spacealert or another location in your path.
+- Execute the script (uv takes care of the dependencies):
+  - On MacOS/Linux: `spacealert` or ./SpaceAlertPlayer.py 
+  - On Windows, run it as `uv run SpaceAlertPlayer.py`
+  - Press `q` during a mission to abort it and return to the menu.
 
 ##Todo
 
