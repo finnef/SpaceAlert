@@ -118,24 +118,23 @@ class alert(event):
         self.zone = zone
         self.unconfirmed = unconfirmed
 
-    def createMessg(self, repeat):
+    def createMessg(self):
         """
 
-        @param repeat:
         @return:
         """
-        if repeat:
-            messg = Settings.messg['repeat']
+        if self.unconfirmed:
+            messg = Settings.messg['UR']
         else:
-            messg = ''
+            messg = Settings.messg['alert']
 
-        messg = messg + Settings.messg['alert']
         messg += ' - '
         messg = messg + Settings.messg['time_t'] % self.turn
         messg += ' - '
         messg = messg + Settings.messg[self.threat]
-        messg += ' - '
-        messg = messg + Settings.messg[self.zone]
+        if self.zone:
+            messg += ' - '
+            messg = messg + Settings.messg[self.zone]
         return messg
 
     def execute(self):
@@ -143,16 +142,45 @@ class alert(event):
 
 
         """
-        self.displayQ.append( (self.createMessg(False), None))
-        self.audioQ.extend ( [(Settings.sound['alert'], -1, None), ( Settings.sound['time_t'] % self.turn, -1, None), (Settings.sound[self.threat], -1, None), (Settings.sound[self.zone], -1, self.executeRepeat)] )
+        self.displayQ.append( (self.createMessg(), None))
+        
+        if self.unconfirmed:
+            alert_sound = Settings.sound['UR']
+        else:
+            alert_sound = Settings.sound['alert']
+
+        audio_list = [
+            (alert_sound, -1, None),
+            (Settings.sound['time_t'] % self.turn, -1, None),
+            (Settings.sound[self.threat], -1, None)
+        ]
+        
+        if self.zone:
+            audio_list.append((Settings.sound[self.zone], -1, self.executeRepeat))
+        else:
+            # If no zone, attach the repeat callback to the threat sound
+            last_sound = audio_list.pop()
+            audio_list.append((last_sound[0], last_sound[1], self.executeRepeat))
+            
+        self.audioQ.extend(audio_list)
 
     def executeRepeat(self):
         """
 
 
         """
-        self.displayQ.append( (self.createMessg(True), None))
-        self.audioQ.extend( [(Settings.sound['repeat'], -1, None), ( Settings.sound['time_t'] % self.turn, -1, None), (Settings.sound[self.threat], -1, None), (Settings.sound[self.zone], -1, None)] )
+        # Do not print repeat alerts, only play the audio
+        
+        audio_list = [
+            (Settings.sound['repeat'], -1, None),
+            (Settings.sound['time_t'] % self.turn, -1, None),
+            (Settings.sound[self.threat], -1, None)
+        ]
+        
+        if self.zone:
+            audio_list.append((Settings.sound[self.zone], -1, None))
+            
+        self.audioQ.extend(audio_list)
 
 
 class incomingData(event):

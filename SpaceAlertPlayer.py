@@ -1,3 +1,9 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.8, <3.14"
+# dependencies = ["pygame"]
+# ///
+
 import time
 from collections import deque
 from threading import Thread
@@ -44,13 +50,11 @@ def runGame(script):
     startTime = time.time()
 
     # Spawn the audio thread:
-    audioThread = Thread(target=threads.AudioThread, args=(audioQ,threadCommunicationQ))
-    audioThread.setDaemon(True)
+    audioThread = Thread(target=threads.AudioThread, args=(audioQ,threadCommunicationQ), daemon=True)
     audioThread.start()
 
     # Spawn the display thread:
-    displayThread = Thread(target=threads.DisplayThread, args=(displayQ, startTime,threadCommunicationQ))
-    displayThread.setDaemon(True)
+    displayThread = Thread(target=threads.DisplayThread, args=(displayQ, startTime,threadCommunicationQ), daemon=True)
     displayThread.start()
 
     for timeEvent, event in eventList:
@@ -81,4 +85,4 @@ if __name__ == "__main__":
     while play:
         play = main()
 
-    print "Byebye space cadet!"
+    print("Byebye space cadet!")

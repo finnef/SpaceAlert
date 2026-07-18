@@ -1,3 +1,6 @@
+from ducklingScriptParser import ducklingScriptParser
+
+
 class SpaceAlertMenu():
 
     """
@@ -16,14 +19,30 @@ class SpaceAlertMenu():
         @return:
         """
         i = 1
+        formatted_items = []
         for option in menuItems:
-            menuText += str(i) + ") " + option + "\n"
+            formatted_items.append(str(i) + ") " + option)
             i += 1
+
+        if formatted_items:
+            max_width = max(len(item) for item in formatted_items) + 2
+            num_cols = max(1, 80 // max_width)
+            num_cols = min(num_cols, 3)  # Max 3 columns for better readability
+
+            num_rows = (len(formatted_items) + num_cols - 1) // num_cols
+
+            for r in range(num_rows):
+                line = ""
+                for c in range(num_cols):
+                    index = r + c * num_rows
+                    if index < len(formatted_items):
+                        line += formatted_items[index].ljust(max_width)
+                menuText += line + "\n"
 
         menuText += "0) Back"
         while True:
-            print menuText
-            selection = raw_input("Make your choice: ")
+            print(menuText)
+            selection = input("Make your choice: ")
             if selection.isdigit():
                 selection = int(selection)
                 if selection == 0:
@@ -52,8 +71,24 @@ class SpaceAlertMenu():
         """
         menuText = "Select a mission to play:\n"
         missions = self.missionList.getMissions(chapter)
-        mission = self.subMenu(missions, menuText)
-        return mission
+        
+        displayOptions = []
+        for m in missions:
+            try:
+                script = self.missionList.getScript(chapter, m)
+                lastEventStr = script.split(',')[-1]
+                timeStr, _ = ducklingScriptParser.splitEvent(lastEventStr)
+                totalSeconds = ducklingScriptParser.convertTime(timeStr)
+                duration = "%02d:%02d" % (totalSeconds // 60, totalSeconds % 60)
+                displayOptions.append(f"{m} ({duration})")
+            except:
+                displayOptions.append(m)
+            
+        selection = self.subMenu(displayOptions, menuText)
+        if selection:
+            index = displayOptions.index(selection)
+            return missions[index]
+        return None
 
     @staticmethod
     def noAction():
@@ -61,7 +96,7 @@ class SpaceAlertMenu():
 
 
         """
-        print 'Say what Cadette?'
+        print('Say what Cadette?')
 
     def main(self):
 
@@ -73,8 +108,8 @@ class SpaceAlertMenu():
         mainMenuText = "\n Main Menu.\n (s)elect chapter\n (q)uit"
 
         while True:
-            print mainMenuText
-            selection = raw_input("Your selection: ")
+            print(mainMenuText)
+            selection = input("Your selection: ")
             if selection == "q":
                 return None, None
             elif selection == "s":

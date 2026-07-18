@@ -2,6 +2,13 @@ import sys
 import event
 
 
+class ScriptError(Exception):
+    """
+    Exception raised for errors in the duckling script.
+    """
+    pass
+
+
 class ducklingScriptParser():
     #Split the timeString (mmss) from the EventString (xxx)
     """
@@ -38,8 +45,7 @@ class ducklingScriptParser():
         elif len(timeStr) == 4:
             return int(timeStr[0:2]) * 60 + int(timeStr[2:4])
 
-        print 'Error in time of timeStr: ' + timeStr
-        sys.exit(1)
+        raise ScriptError(f"Error in time of timeStr: {timeStr}")
 
     @staticmethod
     def strThreatToEventThreat(strThreat):
@@ -57,8 +63,7 @@ class ducklingScriptParser():
         elif strThreat == 'SIT':
             return 'internal_serious'
         else:
-            print "ERROR unkown threat code, make it a proper exception!"
-            print "threatstr: " + strThreat
+            raise ScriptError(f"Unknown threat code: {strThreat}")
 
     @staticmethod
     def strZonetoEventZone(strZone):
@@ -74,8 +79,7 @@ class ducklingScriptParser():
         elif strZone == 'B':
             return 'zone_blue'
         else:
-            print "ERROR unkown zone code, make it a proper exception!"
-            print "threatstr: " + strZone
+            raise ScriptError(f"Unknown zone code: {strZone}")
 
     def parseEventStr(self, eventStr):
         """
@@ -93,17 +97,23 @@ class ducklingScriptParser():
             eventList.append((time - 60, event.phaseEnds(int(strParams), '1min')))
             eventList.append((time - 20, event.phaseEnds(int(strParams), '20s')))
             eventList.append((time - 7, event.phaseEnds(int(strParams), 'now')))
-        elif strType == "AL":
+        elif strType == "AL" or strType == "UR":
+            unconfirmed = (strType == "UR")
             turn = int(strParams[0])
-            threat = self.strThreatToEventThreat(strParams[1:len(strParams) - 1])
-            zone = self.strZonetoEventZone(strParams[-1])
-            eventList.append((time, event.alert(turn, threat, zone)))
-            pass
-        elif strType == "UR":
-            turn = int(strParams[0])
-            threat = self.strThreatToEventThreat(strParams[1:len(strParams) - 1])
-            zone = self.strZonetoEventZone(strParams[-1])
-            eventList.append((time, event.alert(turn, threat, zone, True)))
+            
+            # If it ends with a known zone code, separate it.
+            # Known zones are R, W, B.
+            if strParams.endswith(('R', 'W', 'B')):
+                threat_code = strParams[1:-1]
+                zone_code = strParams[-1]
+                threat = self.strThreatToEventThreat(threat_code)
+                zone = self.strZonetoEventZone(zone_code)
+            else:
+                threat_code = strParams[1:]
+                threat = self.strThreatToEventThreat(threat_code)
+                zone = None
+            
+            eventList.append((time, event.alert(turn, threat, zone, unconfirmed)))
         elif strType == "ID":
             eventList.append((time, event.incomingData()))
         elif strType == "DT":
@@ -111,8 +121,7 @@ class ducklingScriptParser():
         elif strType == "CS":
             eventList.append((time, event.communicationSystemsDown(int(strParams))))
         else:
-            print 'error unkown eventtype in script. TODO: make a proper exception from this.'
-            print 'eventtyp: ' + strType
+            raise ScriptError(f"Unknown event type in script: {strType}")
 
         #return the events
         return eventList
@@ -140,7 +149,7 @@ class ducklingScriptParser():
                         eventItem.convertToEndMission()
 
         else:
-            print 'ERROR, the last event is not a phase end!'
+            raise ScriptError("The last event is not a phase end!")
 
 
         return eventList

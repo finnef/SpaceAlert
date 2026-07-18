@@ -1,6 +1,37 @@
 import time
-import mp3play
+import pygame
 from settings import Settings
+
+# Initialize pygame mixer
+try:
+    pygame.mixer.init()
+except (pygame.error, AttributeError, NotImplementedError) as e:
+    print(f"Warning: Could not initialize pygame mixer: {e}")
+
+# Shim for mp3play using pygame.mixer
+class mp3play_shim:
+    class Clip:
+        def __init__(self, path):
+            try:
+                self.sound = pygame.mixer.Sound(path)
+            except (pygame.error, AttributeError, NotImplementedError) as e:
+                print(f"Error loading sound {path}: {e}")
+                # Create a dummy sound object to avoid crashes
+                self.sound = None
+            self.channel = None
+        def play(self):
+            if self.sound:
+                self.channel = self.sound.play()
+        def stop(self):
+            if self.channel:
+                self.channel.stop()
+        def isplaying(self):
+            return self.channel is not None and self.channel.get_busy()
+    @staticmethod
+    def load(path):
+        return mp3play_shim.Clip(path)
+
+mp3play = mp3play_shim
 
 
 # Thread that handles the display of messages and the clock!
@@ -11,7 +42,8 @@ def DisplayThread(displayQ, startTime, communicationQ):
     @param startTime:
     @param communicationQ:
     """
-    secondsPrinted = 0
+    secondsPrinted = -1
+    onTimerLine = False
     run = True
     while run:
         time.sleep(.1)
@@ -22,12 +54,17 @@ def DisplayThread(displayQ, startTime, communicationQ):
         seconds = int(seconds)
         if seconds != secondsPrinted:
             secondsPrinted = seconds
-            print '%02d:%02d' % (minute, seconds)
+            print('\r%02d:%02d' % (minute, seconds), end='', flush=True)
+            onTimerLine = True
 
         # Check if the display queu needs processing:
         if len(displayQ) > 0:
             (msg, callBack) = displayQ.popleft()
-            print msg
+            if onTimerLine:
+                print(' %s' % msg)
+                onTimerLine = False
+            else:
+                print(msg)
             if not callBack is None:
                 callBack()
 
@@ -36,6 +73,8 @@ def DisplayThread(displayQ, startTime, communicationQ):
             for msg in communicationQ:
                 if msg == 'DISPLAY-STOP':
                     run = False
+    if onTimerLine:
+        print()
 
 # Thread that handles the audioQueue and playback.
 def AudioThread(audioQ, communicationQ):
@@ -96,7 +135,7 @@ def randomSiren():
     elif rnd == 3:
         siren = mp3play.load(Settings.soundsDir + Settings.sound['siren3'])
     else:
-        print "Error in random int, it retrns: " + str(rnd)
+        print("Error in random int, it retrns: " + str(rnd))
         exit()
 
     return siren

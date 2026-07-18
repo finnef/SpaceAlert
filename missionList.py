@@ -1,4 +1,7 @@
-import ConfigParser
+try:
+    import configparser as ConfigParser
+except ImportError:
+    import ConfigParser
 
 
 class missionList():
@@ -45,7 +48,7 @@ class missionList():
         @return:
         """
         chapterList = []
-        for chapter, missions in self.chapter.iteritems():
+        for chapter, missions in self.chapter.items():
             chapterList.append(chapter)
 
         chapterList.sort()
@@ -58,7 +61,7 @@ class missionList():
         @return:
         """
         missions = []
-        for mission, missionScript in self.chapter[chapter].iteritems():
+        for mission, missionScript in self.chapter[chapter].items():
             missions.append(mission)
 
         missions.sort()
