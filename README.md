@@ -11,8 +11,9 @@ Rule book, missions, sounds available at:
 
 ##Installation
 
-- Install requirements (in a Python virtualenv, if you like):
-    `$ pip install -r requirements.txt`
+- Install uv (https://docs.astral.sh/uv/getting-started/installation/)
+- execute the script: ./SpaceAlertPlayer.py
+uv takes care of the dependencies.
 
 ##Todo
 
