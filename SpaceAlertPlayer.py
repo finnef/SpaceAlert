@@ -4,6 +4,8 @@
 # dependencies = ["pygame"]
 # ///
 
+import os
+import sys
 import time
 from collections import deque
 from threading import Thread
@@ -49,29 +51,65 @@ def runGame(script):
     # Start the game NOW:
     startTime = time.time()
 
+    import select
+    try:
+        import tty
+        import termios
+        fd = sys.stdin.fileno()
+        isatty = os.isatty(fd)
+    except:
+        isatty = False
+
+    if isatty:
+        old_settings = termios.tcgetattr(fd)
+        tty.setcbreak(fd)
+
     # Spawn the audio thread:
     audioThread = Thread(target=threads.AudioThread, args=(audioQ,threadCommunicationQ), daemon=True)
-    audioThread.start()
 
     # Spawn the display thread:
     displayThread = Thread(target=threads.DisplayThread, args=(displayQ, startTime,threadCommunicationQ), daemon=True)
-    displayThread.start()
 
-    for timeEvent, event in eventList:
-        # Set the timer for the next event.
-        timer = startTime + timeEvent
+    aborted = False
+    try:
+        audioThread.start()
+        displayThread.start()
 
-        # Wait for next event.
-        while time.time() < timer:
-            # go easy on the CPU:
-            time.sleep(.1)
+        for timeEvent, event in eventList:
+            # Set the timer for the next event.
+            timer = startTime + timeEvent
 
-        # Add the que's to the event and run the event
-        event.setQs(audioQ, displayQ)
-        event.execute()
+            # Wait for next event.
+            while time.time() < timer:
+                # Check for abort
+                if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+                    if sys.stdin.read(1).lower() == 'q':
+                        threadCommunicationQ.append('ABORT')
+                        aborted = True
+                        break
+                # go easy on the CPU:
+                time.sleep(.1)
 
-    #Give the mp3s 15 seconds to finish playing
-    time.sleep(20)
+            if aborted:
+                break
+
+            # Add the que's to the event and run the event
+            event.setQs(audioQ, displayQ)
+            event.execute()
+
+        if not aborted:
+            #Give the mp3s 20 seconds to finish playing
+            # Also allow aborting during this wait
+            end_wait = time.time() + 20
+            while time.time() < end_wait:
+                if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+                    if sys.stdin.read(1).lower() == 'q':
+                        threadCommunicationQ.append('ABORT')
+                        break
+                time.sleep(.1)
+    finally:
+        if isatty:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
     #Signal the Thread to end, and wait for it.
     threadCommunicationQ.append('AUDIO-STOP')

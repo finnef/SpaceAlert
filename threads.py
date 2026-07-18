@@ -71,7 +71,7 @@ def DisplayThread(displayQ, startTime, communicationQ):
         #Check for signals in the communication thread
         if len(communicationQ) >0:
             for msg in communicationQ:
-                if msg == 'DISPLAY-STOP':
+                if msg == 'DISPLAY-STOP' or msg == 'ABORT':
                     run = False
     if onTimerLine:
         print()
@@ -91,15 +91,21 @@ def AudioThread(audioQ, communicationQ):
             siren.play()
 
             while len(audioQ) == 0 and siren.isplaying():
+                if 'ABORT' in communicationQ or 'AUDIO-STOP' in communicationQ:
+                    siren.stop()
+                    break
                 time.sleep(.1)
 
         #Check if the audio queu needs processing
-        if len(audioQ) > 0:
+        if len(audioQ) > 0 and 'ABORT' not in communicationQ and 'AUDIO-STOP' not in communicationQ:
             (sound, duration, callBack) = audioQ.popleft()
             clip = mp3play.load(Settings.soundsDir + sound)
             if duration > 0:
                 timer = time.time() + duration
                 while time.time() < timer:
+                    if 'ABORT' in communicationQ or 'AUDIO-STOP' in communicationQ:
+                        clip.stop()
+                        break
                     if not clip.isplaying():
                         clip.play()
                     time.sleep(.1)
@@ -107,6 +113,9 @@ def AudioThread(audioQ, communicationQ):
             else:
                 clip.play()
                 while clip.isplaying():
+                    if 'ABORT' in communicationQ or 'AUDIO-STOP' in communicationQ:
+                        clip.stop()
+                        break
                     time.sleep(.1)
 
             if not callBack is None:
@@ -115,7 +124,7 @@ def AudioThread(audioQ, communicationQ):
         #Check for signals in the communication thread
         if len(communicationQ) >0:
             for msg in communicationQ:
-                if msg == 'AUDIO-STOP':
+                if msg == 'AUDIO-STOP' or msg == 'ABORT':
                     run = False
 
 def randomSiren():
